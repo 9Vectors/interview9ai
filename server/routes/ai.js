@@ -1,5 +1,9 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
+const aiService = require('../services/aiService');
+const candidateRepository = require('../repositories/candidateRepository');
+const scoreRepository = require('../repositories/scoreRepository');
+const interviewRepository = require('../repositories/interviewRepository');
 const router = express.Router();
 
 // Apply auth middleware to all AI routes
@@ -8,99 +12,194 @@ router.use(authMiddleware);
 // POST /api/v1/ai/analyze
 router.post('/analyze', async (req, res) => {
   try {
-    const { candidateId } = req.body;
+    if (!aiService.client) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'AI_UNAVAILABLE', message: 'ANTHROPIC_API_KEY is not configured. AI analysis unavailable.' },
+      });
+    }
 
-    // In production, this calls Claude API via AIService
-    // For now, return mock analysis scoped to org
-    const analysis = {
+    const { candidateId } = req.body;
+    if (!candidateId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'candidateId is required' },
+      });
+    }
+
+    // Gather candidate data + scores + interviews for context
+    const candidate = await candidateRepository.findById(req.orgId, candidateId);
+    if (!candidate) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Candidate not found' },
+      });
+    }
+
+    const { data: scores } = await scoreRepository.findAll(req.orgId, { candidateId });
+    const { data: interviews } = await interviewRepository.findAll(req.orgId, { candidateId });
+
+    const context = {
+      orgName: req.user.org_name || req.orgId,
+      userRole: req.user.role || 'Interviewer',
+    };
+
+    const analysisData = {
+      candidate,
+      scores,
+      interviews,
+      analysisType: 'candidate_analysis',
+    };
+
+    const rawResult = await aiService.analyze(context, analysisData);
+
+    // Parse structured result if possible, otherwise wrap as text
+    let analysis;
+    try {
+      analysis = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult;
+    } catch {
+      analysis = { rawAnalysis: rawResult };
+    }
+
+    const result = {
       candidateId,
       orgId: req.orgId,
       type: 'candidate_analysis',
-      vectorScores: {
-        V2: { score: 4.2, subVectors: { 'Employee Characteristics': 4.3, Leadership: 4.1, Culture: 4.5 } },
-        V6: { score: 3.8, subVectors: { Performance: 3.9, Measurement: 3.7 } },
-      },
-      measurement13: {
-        topAttributes: [
-          { id: 8, name: 'Emotional Intelligence', score: 4.5 },
-          { id: 6, name: 'Accountability', score: 4.3 },
-          { id: 10, name: 'Results Orientation', score: 4.0 },
-        ],
-        gapAttributes: [
-          { id: 1, name: 'Vision', score: 3.0, recommendation: 'Assess strategic vision through senior management questions (Ch. 11)' },
-        ],
-      },
-      recommendations: [
-        'Strong cultural fit candidate — V2 Culture scores above threshold',
-        'Recommend additional strategic thinking assessment before VP-level placement',
-        'Reference check triangulation shows 0 validation gaps — high confidence',
-      ],
-      redFlags: [],
+      ...analysis,
       timestamp: new Date().toISOString(),
     };
 
-    res.json({ success: true, data: analysis });
+    res.json({ success: true, data: result });
   } catch (error) {
     console.error('AI analyze error:', error.message);
-    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: 'AI analysis failed' } });
+    res.status(500).json({
+      success: false,
+      error: { code: 'AI_ERROR', message: 'AI analysis failed' },
+    });
   }
 });
 
 // POST /api/v1/ai/generate
 router.post('/generate', async (req, res) => {
   try {
-    const { roleLevel, focusAreas } = req.body;
+    if (!aiService.client) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'AI_UNAVAILABLE', message: 'ANTHROPIC_API_KEY is not configured. AI generation unavailable.' },
+      });
+    }
 
-    const guide = {
+    const { roleLevel, focusAreas, candidateId } = req.body;
+    if (!roleLevel) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'roleLevel is required' },
+      });
+    }
+
+    const context = {
+      orgName: req.user.org_name || req.orgId,
+      userRole: req.user.role || 'Interviewer',
+    };
+
+    const generateData = {
+      roleLevel,
+      focusAreas: focusAreas || [],
+      candidateId,
+      requestType: 'interview_plan_generation',
+    };
+
+    const rawResult = await aiService.generate(context, generateData);
+
+    let guide;
+    try {
+      guide = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult;
+    } catch {
+      guide = { rawPlan: rawResult };
+    }
+
+    const result = {
       roleLevel,
       orgId: req.orgId,
-      interviewPlan: {
-        stages: ['Opening/Rapport', 'Traditional', 'Achievement-Anchored', 'Role-Specific', 'Pressure Cooker', 'Final Round'],
-        estimatedDuration: 75,
-        questionRecommendations: [
-          { stage: 'Traditional', questions: ['Q001', 'Q004'], rationale: 'Build rapport and assess baseline motivation' },
-          { stage: 'Achievement-Anchored', questions: ['Q006', 'Q008'], rationale: 'Quantify past impact with STAR framework' },
-          { stage: 'Pressure Cooker', questions: ['Q030', 'Q032'], rationale: 'Assess resilience and integrity under pressure' },
-          { stage: 'Final Round', questions: ['Q034', 'Q035'], rationale: 'Validate fit and assess 90-day readiness' },
-        ],
-      },
+      ...guide,
       timestamp: new Date().toISOString(),
     };
 
-    res.json({ success: true, data: guide });
+    res.json({ success: true, data: result });
   } catch (error) {
     console.error('AI generate error:', error.message);
-    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: 'AI generation failed' } });
+    res.status(500).json({
+      success: false,
+      error: { code: 'AI_ERROR', message: 'AI generation failed' },
+    });
   }
 });
 
 // POST /api/v1/ai/recommend
 router.post('/recommend', async (req, res) => {
   try {
-    const { candidateId } = req.body;
+    if (!aiService.client) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'AI_UNAVAILABLE', message: 'ANTHROPIC_API_KEY is not configured. AI recommendations unavailable.' },
+      });
+    }
 
-    const recommendations = {
+    const { candidateId } = req.body;
+    if (!candidateId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'candidateId is required' },
+      });
+    }
+
+    // Gather full candidate context
+    const candidate = await candidateRepository.findById(req.orgId, candidateId);
+    if (!candidate) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Candidate not found' },
+      });
+    }
+
+    const { data: scores } = await scoreRepository.findAll(req.orgId, { candidateId });
+    const { data: interviews } = await interviewRepository.findAll(req.orgId, { candidateId });
+
+    const context = {
+      orgName: req.user.org_name || req.orgId,
+      userRole: req.user.role || 'Interviewer',
+    };
+
+    const recommendData = {
+      candidate,
+      scores,
+      interviews,
+      requestType: 'hiring_recommendation',
+    };
+
+    const rawResult = await aiService.recommend(context, recommendData);
+
+    let recommendations;
+    try {
+      recommendations = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult;
+    } catch {
+      recommendations = { rawRecommendation: rawResult };
+    }
+
+    const result = {
       candidateId,
       orgId: req.orgId,
-      hireRecommendation: 'proceed',
-      confidence: 0.82,
-      reasoning: [
-        'STAR scores consistently above 4.0 across all dimensions',
-        'Measurement13 profile shows strong Competence and Character clusters',
-        'Reference triangulation validated — 0 discrepancy gaps',
-      ],
-      nextSteps: [
-        'Complete pressure-cooker assessment for Adaptability and Emotional Intelligence',
-        'Schedule Culture Agent deep-dive for Values alignment',
-        'Prepare offer package aligned to V7 → Employees → Compensation expectations',
-      ],
+      ...recommendations,
       timestamp: new Date().toISOString(),
     };
 
-    res.json({ success: true, data: recommendations });
+    res.json({ success: true, data: result });
   } catch (error) {
     console.error('AI recommend error:', error.message);
-    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: 'AI recommendation failed' } });
+    res.status(500).json({
+      success: false,
+      error: { code: 'AI_ERROR', message: 'AI recommendation failed' },
+    });
   }
 });
 

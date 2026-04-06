@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
+const { initCosmos } = require('./db/cosmosClient');
 const candidateRoutes = require('./routes/candidates');
 const interviewRoutes = require('./routes/interviews');
 const aiRoutes = require('./routes/ai');
@@ -51,7 +52,13 @@ app.get('/health/live', (req, res) => {
 });
 
 app.get('/health/ready', (req, res) => {
-  res.status(200).json({ status: 'ready', app: 'Interview9.ai' });
+  const { isCosmosAvailable } = require('./db/cosmosClient');
+  res.status(200).json({
+    status: 'ready',
+    app: 'Interview9.ai',
+    cosmos: isCosmosAvailable() ? 'connected' : 'in-memory-fallback',
+    ai: process.env.ANTHROPIC_API_KEY ? 'configured' : 'unavailable',
+  });
 });
 
 // API Routes
@@ -64,9 +71,20 @@ app.use('/api/vectors', vectorsRouter);
 // Error handler
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Interview9.ai API running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health/live`);
-});
+// Start server with Cosmos initialization
+async function start() {
+  try {
+    await initCosmos();
+  } catch (err) {
+    console.warn('[Interview9] Cosmos init warning (continuing with in-memory):', err.message);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Interview9.ai API running on port ${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health/live`);
+  });
+}
+
+start();
 
 module.exports = app;
