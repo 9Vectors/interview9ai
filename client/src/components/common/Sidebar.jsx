@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -9,6 +10,8 @@ import {
   Brain,
   FileText,
   Settings,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 const navigation = [
@@ -26,25 +29,38 @@ const navigation = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem('interview9_sidebar_collapsed');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  const toggleSidebar = () => {
+    setIsCollapsed(prev => {
+      localStorage.setItem('interview9_sidebar_collapsed', JSON.stringify(!prev));
+      return !prev;
+    });
+  };
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 min-h-screen flex flex-col">
-      <div className="p-6 border-b border-slate-200">
+    <aside className={`${isCollapsed ? 'w-16' : 'w-56'} transition-all duration-200 bg-white border-r border-gray-200 min-h-screen flex flex-col`}>
+      <div className={`${isCollapsed ? 'p-3' : 'p-6'} border-b border-slate-200`}>
         <Link to="/app" className="flex items-center space-x-3">
-          <div className="w-9 h-9 bg-teal-600 rounded-lg flex items-center justify-center">
+          <div className="w-9 h-9 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <span className="text-white font-bold text-sm">i9</span>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-900">Interview9<span className="text-brand-orange">.ai</span></h1>
-            <p className="text-xs text-slate-500">Structured Interview Intelligence</p>
-          </div>
+          {!isCollapsed && (
+            <div>
+              <h1 className="text-lg font-bold text-slate-900">Interview9<span className="text-brand-orange">.ai</span></h1>
+              <p className="text-xs text-slate-500">Structured Interview Intelligence</p>
+            </div>
+          )}
         </Link>
       </div>
 
       <nav className="flex-1 py-4">
         {navigation.map((item, index) => {
           if (item.type === 'divider') {
-            return <div key={index} className="my-3 mx-4 border-t border-slate-200" />;
+            return <div key={index} className={`my-3 ${isCollapsed ? 'mx-2' : 'mx-4'} border-t border-slate-200`} />;
           }
 
           const isActive = location.pathname === item.href;
@@ -54,24 +70,42 @@ export default function Sidebar() {
             <Link
               key={item.name}
               to={item.href}
-              className={`flex items-center px-4 py-2.5 mx-2 rounded-lg text-sm transition-colors ${
+              title={isCollapsed ? item.name : undefined}
+              className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'px-4'} py-2.5 mx-2 rounded-lg text-sm transition-colors ${
                 isActive
-                  ? 'bg-teal-50 text-teal-700 font-medium border-l-4 border-teal-600 ml-0 pl-3'
+                  ? `bg-teal-50 text-teal-700 font-medium ${isCollapsed ? '' : 'border-l-4 border-teal-600 ml-0 pl-3'}`
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <Icon className={`h-5 w-5 mr-3 ${isActive ? 'text-teal-600' : ''}`} />
-              {item.name}
+              <Icon className={`h-5 w-5 flex-shrink-0 ${!isCollapsed ? 'mr-3' : ''} ${isActive ? 'text-teal-600' : ''}`} />
+              {!isCollapsed && item.name}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-200">
-        <div className="bg-teal-50 rounded-lg p-3">
-          <p className="text-xs font-medium text-teal-700">TheGreyMatter.ai</p>
-          <p className="text-xs text-teal-600 mt-1">Connected to Platform</p>
+      {!isCollapsed && (
+        <div className="p-4 border-t border-slate-200">
+          <div className="bg-teal-50 rounded-lg p-3">
+            <p className="text-xs font-medium text-teal-700">TheGreyMatter.ai</p>
+            <p className="text-xs text-teal-600 mt-1">Connected to Platform</p>
+          </div>
         </div>
+      )}
+
+      {/* Collapse Toggle */}
+      <div className="p-2 border-t border-gray-200">
+        <button
+          onClick={toggleSidebar}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+        >
+          {isCollapsed ? <ChevronRight className="w-5 h-5" /> : (
+            <>
+              <ChevronLeft className="w-5 h-5" />
+              <span>Collapse</span>
+            </>
+          )}
+        </button>
       </div>
     </aside>
   );
