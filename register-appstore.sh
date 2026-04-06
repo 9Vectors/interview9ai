@@ -55,14 +55,16 @@ command -v jq >/dev/null   || { echo "ERROR: jq is required" >&2; exit 1; }
 # ── Environment-specific settings ────────────────────────────────────────────
 if [[ "$ENV" == "dev" ]]; then
   API_BASE_URL="https://api.test.thegreymatter.ai"
-  RESOURCE_GROUP="TGM3"
+  RESOURCE_GROUP="interview9-dev"
   WEB_CONTAINER="eco-interview9ai-web"
   API_CONTAINER="eco-interview9ai-api"
+  CUSTOM_DOMAIN="interview9.test.thegreymatter.ai"
 else
   API_BASE_URL="https://api.thegreymatter.ai"
   RESOURCE_GROUP="TGM3-prod"
   WEB_CONTAINER="eco-interview9ai-web"
   API_CONTAINER="eco-interview9ai-api"
+  CUSTOM_DOMAIN="interview9.thegreymatter.ai"
 fi
 
 # ── Resolve container FQDNs ──────────────────────────────────────────────────
@@ -85,10 +87,18 @@ if [[ -z "$WEB_FQDN" ]]; then
   exit 1
 fi
 
-APP_LAUNCH_URL="https://${WEB_FQDN}"
-APP_HEALTH_URL="https://${WEB_FQDN}/health"
-APP_REDIRECT_URI="https://${WEB_FQDN}/auth/callback"
-APP_API_URL="https://${WEB_FQDN}/api"
+# Use custom domain if set, otherwise fall back to Azure FQDN
+if [[ -n "${CUSTOM_DOMAIN:-}" ]]; then
+  APP_LAUNCH_URL="https://${CUSTOM_DOMAIN}"
+  APP_HEALTH_URL="https://${CUSTOM_DOMAIN}/health"
+  APP_REDIRECT_URI="https://${CUSTOM_DOMAIN}/auth/callback"
+  APP_API_URL="https://${CUSTOM_DOMAIN}/api"
+else
+  APP_LAUNCH_URL="https://${WEB_FQDN}"
+  APP_HEALTH_URL="https://${WEB_FQDN}/health"
+  APP_REDIRECT_URI="https://${WEB_FQDN}/auth/callback"
+  APP_API_URL="https://${WEB_FQDN}/api"
+fi
 
 echo "  Web:  $APP_LAUNCH_URL"
 echo "  API:  $APP_API_URL"
@@ -201,7 +211,7 @@ OAUTH_RESPONSE=$(curl -sf -X POST "${API_BASE_URL}/oauth/clients" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -d "{
     \"client_name\": \"${OAUTH_CLIENT_NAME}\",
-    \"redirect_uris\": [\"${APP_REDIRECT_URI}\"],
+    \"redirect_uris\": [\"http://localhost:5173/auth/callback\", \"https://interview9.test.thegreymatter.ai/auth/callback\", \"https://interview9.thegreymatter.ai/auth/callback\"],
     \"is_first_party\": true,
     \"allowed_grants\": [\"authorization_code\", \"refresh_token\"],
     \"allowed_scopes\": [\"openid\", \"profile\", \"email\"]
