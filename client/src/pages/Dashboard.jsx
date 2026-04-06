@@ -3,7 +3,8 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import {
   Users, ClipboardList, Star, TrendingUp, TrendingDown,
-  Calendar, Brain, ArrowRight, BookOpen, RefreshCw,
+  Calendar, Brain, ArrowRight, BookOpen, RefreshCw, Plus,
+  UserPlus, Lightbulb, Target,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import useStore from '../services/store';
@@ -35,6 +36,61 @@ function KPICard({ label, value, trend, icon: Icon, iconBg }) {
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+function GettingStartedStepCard({ number, title, description, link, icon: Icon }) {
+  return (
+    <Link to={link} className="flex flex-col items-start p-4 bg-white rounded-lg border border-slate-200 hover:shadow-md hover:border-teal-300 transition-all group">
+      <div className="flex items-center space-x-3 mb-2">
+        <div className="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+          {number}
+        </div>
+        <h4 className="font-semibold text-slate-900 text-sm group-hover:text-teal-700">{title}</h4>
+      </div>
+      <p className="text-xs text-slate-500 ml-11">{description}</p>
+    </Link>
+  );
+}
+
+function GettingStartedCard({ roleName }) {
+  return (
+    <div className="rounded-xl border-2 border-dashed border-teal-600/30 bg-teal-50/50 p-6 mb-8">
+      <div className="flex items-start space-x-3 mb-4">
+        <div className="p-2 bg-teal-100 rounded-lg">
+          <Lightbulb className="h-5 w-5 text-teal-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">
+            Your {roleName || 'hiring'} process is ready! Here is what to do next:
+          </h3>
+          <p className="text-sm text-slate-500 mt-0.5">Follow these steps to complete your structured interview pipeline.</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <GettingStartedStepCard
+          number={1}
+          title="Add Candidates"
+          description="Add candidates manually or upload resumes for AI parsing"
+          link="/app/candidates"
+          icon={UserPlus}
+        />
+        <GettingStartedStepCard
+          number={2}
+          title="Build Interview Plan"
+          description="Auto-generate structured interview questions from the Falcone library"
+          link="/app/builder"
+          icon={ClipboardList}
+        />
+        <GettingStartedStepCard
+          number={3}
+          title="Score & Evaluate"
+          description="Use STAR framework scoring with M13 leadership attributes"
+          link="/app/scoring"
+          icon={Target}
+        />
+      </div>
     </div>
   );
 }
@@ -118,9 +174,18 @@ export default function Dashboard() {
   return (
     <div>
       {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-slate-900">Interview Intelligence Dashboard</h1>
-        <p className="text-slate-500 mt-1">Structured behavioral interviewing powered by the 9Vectors framework</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Interview Intelligence Dashboard</h1>
+          <p className="text-slate-500 mt-1">Structured behavioral interviewing powered by the 9Vectors framework</p>
+        </div>
+        <Link
+          to="/app/candidates"
+          className="flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors shadow-sm"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Candidate
+        </Link>
       </div>
 
       {/* KPI Cards */}
@@ -130,6 +195,11 @@ export default function Dashboard() {
         <KPICard label="Avg. Candidate Score" value={`${avgScore}/5`} icon={Star} iconBg="bg-brand-orange" />
         <KPICard label="Offers Extended" value={offersExtended.length} icon={TrendingUp} iconBg="bg-emerald-500" />
       </div>
+
+      {/* Getting Started — shown when process exists but no candidates yet */}
+      {candidates.length === 0 && hiringProcesses.length > 0 && (
+        <GettingStartedCard roleName={hiringProcesses[0]?.roleName} />
+      )}
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

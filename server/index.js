@@ -10,6 +10,7 @@ const aiRoutes = require('./routes/ai');
 const platformRoutes = require('./routes/platform');
 const vectorsRouter = require('./routes/vectors');
 const documentRoutes = require('./routes/documents');
+const reportRoutes = require('./routes/reports');
 const errorHandler = require('./middleware/errorHandler');
 // Note: authMiddleware is applied within each route file for org-scoped isolation
 
@@ -71,6 +72,9 @@ app.use('/api/vectors', vectorsRouter);
 
 // Document upload routes - TGM File Service integration (Section 9)
 app.use('/api/v1/documents', documentRoutes);
+
+// Reports routes
+app.use('/api/v1/reports', reportRoutes);
 
 // Error handler
 app.use(errorHandler);

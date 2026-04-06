@@ -306,7 +306,26 @@ function FullStep1({ data, onChange }) {
   );
 }
 
+const CULTURE_ATTRIBUTE_OPTIONS = [
+  'Data-driven', 'Transparent', 'Collaborative', 'Deadline-oriented',
+  'Innovation-focused', 'Risk-averse', 'Customer-centric', 'Process-oriented',
+  'Agile', 'Results-driven', 'Hierarchical', 'Flat/egalitarian',
+  'Entrepreneurial', 'Mission-driven', 'People-first', 'Performance-focused',
+  'Quality-obsessed', 'Speed-oriented', 'Learning-oriented', 'Inclusive',
+];
+
 function FullStep2({ data, onChange }) {
+  const selectedCulture = data.cultureAttributes || [];
+
+  const toggleCulture = (attr) => {
+    const current = Array.isArray(selectedCulture) ? selectedCulture : [];
+    if (current.includes(attr)) {
+      onChange({ cultureAttributes: current.filter((a) => a !== attr) });
+    } else {
+      onChange({ cultureAttributes: [...current, attr] });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -348,18 +367,41 @@ function FullStep2({ data, onChange }) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Culture Attributes</label>
-        <textarea
-          value={data.cultureAttributes || ''}
-          onChange={(e) => onChange({ cultureAttributes: e.target.value })}
-          rows={2}
-          placeholder="Key cultural traits that matter for this team (e.g. fast-paced, collaborative, data-driven)..."
-          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
-        />
+        <label className="block text-sm font-medium text-slate-700 mb-2">Culture Attributes</label>
+        <p className="text-xs text-slate-400 mb-3">Select the cultural traits that matter for this team. Choose as many as apply.</p>
+        <div className="flex flex-wrap gap-2">
+          {CULTURE_ATTRIBUTE_OPTIONS.map((attr) => {
+            const selected = Array.isArray(selectedCulture) && selectedCulture.includes(attr);
+            return (
+              <button
+                key={attr}
+                type="button"
+                onClick={() => toggleCulture(attr)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                  selected
+                    ? 'bg-teal-600 text-white border-teal-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {attr}
+              </button>
+            );
+          })}
+        </div>
+        {Array.isArray(selectedCulture) && selectedCulture.length > 0 && (
+          <p className="text-xs text-teal-600 mt-2 font-medium">{selectedCulture.length} selected</p>
+        )}
       </div>
     </div>
   );
 }
+
+const ROLE_LEVEL_PRESETS = {
+  entry: { 4: 3, 7: 3, 5: 3, 10: 3, 9: 3 },
+  mid: { 4: 4, 2: 3, 3: 3, 5: 4, 10: 4, 7: 3, 6: 4 },
+  senior: { 2: 5, 3: 5, 4: 4, 6: 5, 10: 5, 5: 4, 1: 3, 11: 4, 13: 3 },
+  executive: { 1: 5, 2: 5, 3: 5, 4: 5, 6: 5, 10: 5, 5: 4, 11: 5, 9: 5, 8: 4, 13: 4, 12: 3 },
+};
 
 function FullStep3({ data, onChange }) {
   const weights = data.competencyWeights || {};
@@ -378,6 +420,15 @@ function FullStep3({ data, onChange }) {
     onChange({ competencyWeights: { ...weights, [id]: Number(val) } });
   };
 
+  const applyPreset = () => {
+    const preset = ROLE_LEVEL_PRESETS[data.roleLevel];
+    if (preset) {
+      onChange({ competencyWeights: { ...preset } });
+    }
+  };
+
+  const roleLevelLabel = ROLE_LEVELS.find((l) => l.id === data.roleLevel)?.label || data.roleLevel || 'Role Level';
+
   const grouped = {
     Competence: MEASUREMENT13_ATTRIBUTES.filter((a) => a.category === 'Competence'),
     Chemistry: MEASUREMENT13_ATTRIBUTES.filter((a) => a.category === 'Chemistry'),
@@ -390,6 +441,18 @@ function FullStep3({ data, onChange }) {
         <h2 className="text-xl font-bold text-slate-900 mb-1">Competency Framework</h2>
         <p className="text-sm text-slate-500">Select and weight Measurement13 leadership dimensions for this role.</p>
       </div>
+
+      {data.roleLevel && ROLE_LEVEL_PRESETS[data.roleLevel] && (
+        <button
+          type="button"
+          onClick={applyPreset}
+          className="w-full flex items-center justify-center px-4 py-2.5 bg-teal-50 border-2 border-dashed border-teal-300 text-teal-700 rounded-lg text-sm font-medium hover:bg-teal-100 hover:border-teal-400 transition-colors"
+        >
+          <Zap className="h-4 w-4 mr-2" />
+          Auto-select for {roleLevelLabel}
+          <ArrowRight className="h-4 w-4 ml-2" />
+        </button>
+      )}
 
       {Object.entries(grouped).map(([category, attrs]) => (
         <div key={category}>
@@ -623,7 +686,16 @@ function FullReview({ data }) {
             {data.teamDynamics && <p className="text-sm text-slate-700 mb-1"><strong>Dynamics:</strong> {data.teamDynamics}</p>}
             {data.currentChallenges && <p className="text-sm text-slate-700 mb-1"><strong>Challenges:</strong> {data.currentChallenges}</p>}
             {data.growthPlans && <p className="text-sm text-slate-700 mb-1"><strong>Growth:</strong> {data.growthPlans}</p>}
-            {data.cultureAttributes && <p className="text-sm text-slate-700"><strong>Culture:</strong> {data.cultureAttributes}</p>}
+            {Array.isArray(data.cultureAttributes) && data.cultureAttributes.length > 0 && (
+              <div className="text-sm text-slate-700">
+                <strong>Culture:</strong>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {data.cultureAttributes.map((attr) => (
+                    <span key={attr} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700">{attr}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -690,7 +762,7 @@ export default function OnboardingPage() {
     teamDynamics: '',
     currentChallenges: '',
     growthPlans: '',
-    cultureAttributes: '',
+    cultureAttributes: [],
     competencyWeights: {},
     interviewRounds: 3,
     interviewTypes: [],

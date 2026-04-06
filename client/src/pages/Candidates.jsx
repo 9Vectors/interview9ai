@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { Search, Plus, Filter, ChevronRight, Calendar, Star, Users, Briefcase } from 'lucide-react';
+import { Search, Plus, Filter, ChevronRight, Calendar, Star, Users, Briefcase, Upload, FileText, X, Loader2 } from 'lucide-react';
 import useStore from '../services/store';
 import { ROLE_LEVELS } from '../data/questions';
 
@@ -32,6 +32,16 @@ export default function Candidates() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCandidate, setNewCandidate] = useState({ name: '', role: '', roleLevel: '' });
 
+  // Resume upload state
+  const [showResumeUpload, setShowResumeUpload] = useState(false);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [parsedData, setParsedData] = useState(null);
+  const [showParsedModal, setShowParsedModal] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
+
   const filtered = candidates.filter((c) => {
     const matchesSearch = !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.role.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
@@ -54,6 +64,91 @@ export default function Candidates() {
     setShowAddModal(false);
   };
 
+  const handleResumeFile = useCallback((file) => {
+    if (!file) return;
+    const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a PDF or DOCX file');
+      return;
+    }
+    setResumeFile(file);
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    handleResumeFile(file);
+  }, [handleResumeFile]);
+
+  const handleUploadResume = async () => {
+    if (!resumeFile) return;
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append('resume', resumeFile);
+
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => Math.min(prev + 15, 85));
+      }, 200);
+
+      const res = await fetch(`${apiBase}/api/v1/ai/parse-resume`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || 'Failed to parse resume');
+      }
+
+      const result = await res.json();
+      setParsedData(result.data);
+      setShowResumeUpload(false);
+      setShowParsedModal(true);
+      toast.success('Resume parsed successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload resume');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleConfirmParsed = () => {
+    if (!parsedData) return;
+    addCandidate({
+      name: parsedData.name || 'Unknown',
+      role: parsedData.currentRole || '',
+      roleLevel: '',
+      email: parsedData.email || '',
+      phone: parsedData.phone || '',
+      company: parsedData.company || '',
+      yearsExperience: parsedData.yearsExperience || '',
+      skills: parsedData.skills || [],
+      education: parsedData.education || '',
+      summary: parsedData.summary || '',
+      status: 'screening',
+      stage: 'New',
+      appliedDate: new Date().toISOString().split('T')[0],
+      scores: { overall: 0, culture: 0, technical: 0, leadership: 0 },
+      interviewCount: 0,
+      nextInterview: null,
+    });
+    toast.success('Candidate created from resume');
+    setParsedData(null);
+    setShowParsedModal(false);
+    setResumeFile(null);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -61,13 +156,22 @@ export default function Candidates() {
           <h1 className="text-3xl font-bold text-slate-900">Candidates</h1>
           <p className="text-slate-500 mt-1">Track candidates through the structured interview process</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Candidate
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => { setShowResumeUpload(true); setResumeFile(null); }}
+            className="flex items-center px-4 py-2 border-2 border-teal-600 text-teal-600 rounded-lg text-sm font-medium hover:bg-teal-50 transition-colors"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Resume
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Candidate
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -228,6 +332,150 @@ export default function Candidates() {
                 className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors"
               >
                 Add Candidate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resume Upload Modal */}
+      {showResumeUpload && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Upload Resume</h3>
+              <button onClick={() => { setShowResumeUpload(false); setResumeFile(null); }} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Drop Zone */}
+            <div
+              onDrop={handleDrop}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+                dragOver ? 'border-teal-500 bg-teal-50' : resumeFile ? 'border-teal-300 bg-teal-50/50' : 'border-slate-300 hover:border-slate-400'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx"
+                className="hidden"
+                onChange={(e) => handleResumeFile(e.target.files[0])}
+              />
+              {resumeFile ? (
+                <div className="flex flex-col items-center">
+                  <FileText className="h-10 w-10 text-teal-600 mb-2" />
+                  <p className="text-sm font-medium text-slate-900">{resumeFile.name}</p>
+                  <p className="text-xs text-slate-500 mt-1">{(resumeFile.size / 1024).toFixed(0)} KB</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <Upload className="h-10 w-10 text-slate-400 mb-2" />
+                  <p className="text-sm font-medium text-slate-700">Drop a resume here or click to browse</p>
+                  <p className="text-xs text-slate-400 mt-1">Accepts PDF and DOCX files</p>
+                </div>
+              )}
+            </div>
+
+            {/* Upload Progress */}
+            {uploading && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                  <span>Parsing resume with AI...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-teal-600 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end space-x-3 mt-6">
+              <button
+                onClick={() => { setShowResumeUpload(false); setResumeFile(null); }}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUploadResume}
+                disabled={!resumeFile || uploading}
+                className="flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                {uploading ? 'Parsing...' : 'Upload & Parse'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Parsed Resume Confirmation Modal */}
+      {showParsedModal && parsedData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Confirm Parsed Resume Data</h3>
+              <button onClick={() => { setShowParsedModal(false); setParsedData(null); }} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-teal-800">AI has extracted the following information. Review and confirm to create the candidate.</p>
+            </div>
+
+            <div className="space-y-3">
+              {[
+                { label: 'Name', value: parsedData.name },
+                { label: 'Email', value: parsedData.email },
+                { label: 'Phone', value: parsedData.phone },
+                { label: 'Current Role', value: parsedData.currentRole },
+                { label: 'Company', value: parsedData.company },
+                { label: 'Experience', value: parsedData.yearsExperience ? `${parsedData.yearsExperience} years` : '' },
+                { label: 'Education', value: parsedData.education },
+              ].filter((f) => f.value).map((field) => (
+                <div key={field.label} className="flex items-start">
+                  <span className="text-xs font-medium text-slate-500 w-28 flex-shrink-0 pt-0.5">{field.label}</span>
+                  <span className="text-sm text-slate-900">{field.value}</span>
+                </div>
+              ))}
+
+              {parsedData.skills && parsedData.skills.length > 0 && (
+                <div className="flex items-start">
+                  <span className="text-xs font-medium text-slate-500 w-28 flex-shrink-0 pt-0.5">Skills</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {parsedData.skills.map((skill, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">{skill}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {parsedData.summary && (
+                <div>
+                  <span className="text-xs font-medium text-slate-500">Summary</span>
+                  <p className="text-sm text-slate-700 mt-1 bg-slate-50 rounded-lg p-3">{parsedData.summary}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 mt-6">
+              <button
+                onClick={() => { setShowParsedModal(false); setParsedData(null); }}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+              >
+                Discard
+              </button>
+              <button
+                onClick={handleConfirmParsed}
+                className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors"
+              >
+                Create Candidate
               </button>
             </div>
           </div>
