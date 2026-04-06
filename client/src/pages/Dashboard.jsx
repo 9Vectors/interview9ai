@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import {
   Users, ClipboardList, Star, TrendingUp, TrendingDown,
-  Calendar, Brain, ArrowRight, BookOpen, AlertTriangle,
+  Calendar, Brain, ArrowRight, BookOpen, AlertTriangle, RefreshCw,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import useStore from '../services/store';
 import { VECTORS, MEASUREMENT13_ATTRIBUTES } from '../data/questions';
+import VectorRadarChart from '../components/VectorRadarChart';
+import VectorScoreGrid from '../components/VectorScoreGrid';
 
 function KPICard({ label, value, trend, icon: Icon, iconBg }) {
   return (
@@ -61,6 +63,29 @@ function EmptyState() {
 
 export default function Dashboard() {
   const { candidates, interviews, hiringProcesses } = useStore();
+  const [vectorData, setVectorData] = useState(null);
+  const [vectorLoading, setVectorLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchVectorData = async () => {
+      setVectorLoading(true);
+      try {
+        const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${apiBase}/api/vectors/current`);
+        if (res.ok) {
+          const json = await res.json();
+          setVectorData(json.data);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch vector scores:', err.message);
+      } finally {
+        setVectorLoading(false);
+      }
+    };
+    if (hiringProcesses.length > 0) {
+      fetchVectorData();
+    }
+  }, [hiringProcesses]);
 
   if (hiringProcesses.length === 0) {
     return <EmptyState />;
@@ -85,11 +110,6 @@ export default function Dashboard() {
     { name: 'Executive', value: candidates.filter((c) => c.roleLevel === 'executive').length, color: '#8B5CF6' },
     { name: 'Individual', value: candidates.filter((c) => c.roleLevel === 'individual').length, color: '#10B981' },
   ].filter((d) => d.value > 0);
-
-  const vectorCoverage = VECTORS.slice(0, 6).map((v) => ({
-    vector: v.name,
-    coverage: Math.floor(Math.random() * 40) + 60,
-  }));
 
   const avgScore = activeCandidates.length
     ? (activeCandidates.reduce((sum, c) => sum + c.scores.overall, 0) / activeCandidates.length).toFixed(1)
@@ -152,6 +172,37 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* 9Vectors Assessment Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Radar Chart */}
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">9Vectors Alignment</h3>
+              <p className="text-sm text-slate-500">
+                {vectorData ? `Overall: ${vectorData.overallScore}%` : 'Active vectors'}
+              </p>
+            </div>
+          </div>
+          {vectorLoading ? (
+            <div className="h-48 flex items-center justify-center">
+              <RefreshCw className="w-6 h-6 animate-spin text-teal-600" />
+            </div>
+          ) : vectorData ? (
+            <VectorRadarChart vectors={vectorData.vectors} size="compact" />
+          ) : (
+            <div className="h-48 flex items-center justify-center text-sm text-slate-400">
+              No assessment data yet
+            </div>
+          )}
+        </div>
+
+        {/* Score Grid */}
+        <div className="lg:col-span-2">
+          <VectorScoreGrid vectors={vectorData?.vectors || []} />
         </div>
       </div>
 
