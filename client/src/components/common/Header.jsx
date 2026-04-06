@@ -1,6 +1,20 @@
+import { useMemo } from 'react';
 import { Bell, HelpCircle, Search, User } from 'lucide-react';
+import { authApi } from '../../services/api';
 
 export default function Header() {
+  const user = useMemo(() => {
+    const token = authApi.getToken();
+    if (!token) return null;
+    const payload = authApi.decodeToken(token);
+    if (!payload) return null;
+    return {
+      name: payload.name || payload.email || 'User',
+      email: payload.email || '',
+      role: payload.role || 'user',
+    };
+  }, []);
+
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
       <div className="flex items-center flex-1">
@@ -24,11 +38,15 @@ export default function Header() {
         </button>
         <div className="flex items-center space-x-3 pl-4 border-l border-slate-200">
           <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center">
-            <User className="h-4 w-4 text-white" />
+            {user?.name ? (
+              <span className="text-white text-sm font-medium">{user.name.charAt(0)}</span>
+            ) : (
+              <User className="h-4 w-4 text-white" />
+            )}
           </div>
           <div className="text-sm">
-            <p className="font-medium text-slate-900">Interviewer</p>
-            <p className="text-xs text-slate-500">Admin</p>
+            <p className="font-medium text-slate-900">{user?.name || 'User'}</p>
+            <p className="text-xs text-slate-500">{user?.role || 'User'}</p>
           </div>
         </div>
       </div>
