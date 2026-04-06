@@ -163,6 +163,30 @@ const useStore = create((set, get) => ({
   addReferenceCheck: (ref) =>
     set((state) => ({ referenceChecks: [...state.referenceChecks, { ...ref, id: `REF${String(state.referenceChecks.length + 1).padStart(3, '0')}` }] })),
 
+  // Hiring Processes (onboarding)
+  hiringProcesses: [],
+  addHiringProcess: (process) =>
+    set((state) => ({
+      hiringProcesses: [
+        ...state.hiringProcesses,
+        { ...process, id: `HP${String(state.hiringProcesses.length + 1).padStart(3, '0')}`, createdAt: new Date().toISOString() },
+      ],
+    })),
+  updateHiringProcess: (id, updates) =>
+    set((state) => ({
+      hiringProcesses: state.hiringProcesses.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+    })),
+
+  // Document Room
+  processDocuments: [],
+  addProcessDocument: (doc) =>
+    set((state) => ({
+      processDocuments: [
+        ...state.processDocuments,
+        { ...doc, id: `DOC${String(state.processDocuments.length + 1).padStart(3, '0')}`, uploadedAt: new Date().toISOString() },
+      ],
+    })),
+
   // UI State
   selectedCandidate: null,
   setSelectedCandidate: (id) => set({ selectedCandidate: id }),

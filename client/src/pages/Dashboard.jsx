@@ -37,8 +37,34 @@ function KPICard({ label, value, trend, icon: Icon, iconBg }) {
   );
 }
 
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24">
+      <div className="w-20 h-20 bg-teal-100 rounded-2xl flex items-center justify-center mb-6">
+        <ClipboardList className="h-10 w-10 text-teal-600" />
+      </div>
+      <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome to Interview9.ai</h1>
+      <p className="text-slate-500 text-center max-w-md mb-8">
+        Build structured, evidence-based hiring processes powered by the Falcone methodology and Measurement13 framework.
+      </p>
+      <Link
+        to="/app/onboarding"
+        className="flex items-center px-6 py-3 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
+      >
+        <ClipboardList className="h-5 w-5 mr-2" />
+        Start Your First Hiring Process
+        <ArrowRight className="h-5 w-5 ml-2" />
+      </Link>
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const { candidates, interviews } = useStore();
+  const { candidates, interviews, hiringProcesses } = useStore();
+
+  if (hiringProcesses.length === 0) {
+    return <EmptyState />;
+  }
 
   const activeCandidates = candidates.filter((c) => c.status === 'interviewing' || c.status === 'screening');
   const offersExtended = candidates.filter((c) => c.status === 'offer');

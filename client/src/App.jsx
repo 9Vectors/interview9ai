@@ -11,6 +11,8 @@ import AIInsights from './pages/AIInsights'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import AuthCallback from './pages/AuthCallback'
+import OnboardingPage from './pages/OnboardingPage'
+import DocumentRoom from './pages/DocumentRoom'
 import { authApi } from './services/api'
 
 export default function App() {
@@ -25,6 +27,8 @@ export default function App() {
         <Route path="/app" element={<Layout user={user} />}>
           <Route index element={<Navigate to="/app/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="onboarding" element={<OnboardingPage />} />
+          <Route path="processes/:id/documents" element={<DocumentRoom />} />
           <Route path="questions" element={<QuestionLibrary />} />
           <Route path="builder" element={<InterviewBuilder />} />
           <Route path="candidates" element={<Candidates />} />
