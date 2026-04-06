@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import {
   Users, ClipboardList, Star, TrendingUp, TrendingDown,
-  Calendar, Brain, ArrowRight, BookOpen, AlertTriangle, RefreshCw,
+  Calendar, Brain, ArrowRight, BookOpen, RefreshCw,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import useStore from '../services/store';
@@ -125,10 +125,10 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <KPICard label="Active Candidates" value={activeCandidates.length} trend={12} icon={Users} iconBg="bg-teal-600" />
-        <KPICard label="Interviews Completed" value={completedInterviews.length} trend={8} icon={ClipboardList} iconBg="bg-blue-500" />
-        <KPICard label="Avg. Candidate Score" value={`${avgScore}/5`} trend={3} icon={Star} iconBg="bg-brand-orange" />
-        <KPICard label="Offers Extended" value={offersExtended.length} trend={-5} icon={TrendingUp} iconBg="bg-emerald-500" />
+        <KPICard label="Active Candidates" value={activeCandidates.length} icon={Users} iconBg="bg-teal-600" />
+        <KPICard label="Interviews Completed" value={completedInterviews.length} icon={ClipboardList} iconBg="bg-blue-500" />
+        <KPICard label="Avg. Candidate Score" value={`${avgScore}/5`} icon={Star} iconBg="bg-brand-orange" />
+        <KPICard label="Offers Extended" value={offersExtended.length} icon={TrendingUp} iconBg="bg-emerald-500" />
       </div>
 
       {/* Charts Row */}
@@ -273,22 +273,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Alert */}
-          <div className="border-l-4 border-brand-orange pl-4 bg-orange-50 p-4 rounded-r-lg">
-            <div className="flex items-start">
-              <AlertTriangle className="h-5 w-5 text-brand-orange mt-0.5 mr-3 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-orange-800">Rebel Producer Alert</p>
-                <p className="text-sm text-orange-700 mt-1">
-                  Marcus Johnson (Senior Sales Executive) shows high V6 Performance but low V2 Culture scores.
-                  This pattern indicates a potential <strong>rebel producer</strong> — recommend additional cultural fit validation.
-                </p>
-                <Link to="/scoring" className="text-sm font-medium text-orange-800 hover:text-orange-900 mt-2 inline-block">
-                  Review Scoring →
-                </Link>
-              </div>
-            </div>
-          </div>
+          {/* Alerts will be populated from AI Insights when candidates are scored */}
         </div>
       </div>
     </div>
