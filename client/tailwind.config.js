@@ -4,29 +4,53 @@ export default {
   theme: {
     extend: {
       colors: {
-        teal: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#a8d8e8',
-          300: '#7ec8e3',
-          400: '#5ab4d4',
-          500: '#3a9bc8',
-          600: '#1e6b8c',
-          700: '#185a75',
-          800: '#13495e',
-          900: '#0e3847',
+        // TGM3.0 Design System (Section 5)
+        primary: {
+          teal: '#1E6B8C',
+          'teal-dark': '#155A75',
+          'teal-light': '#2A7FA3',
         },
+        accent: {
+          amber: '#F5A623',
+          'amber-dark': '#D4900E',
+          'amber-light': '#F7B84E',
+        },
+        neutral: {
+          charcoal: '#2C2C2C',
+          slate: '#6B7280',
+          mist: '#F0F4F8',
+        },
+        tgm: {
+          50: '#f0f7fa', 100: '#d4eaf2', 200: '#a8d5e6', 300: '#6bb8d4',
+          400: '#2A7FA3', 500: '#1E6B8C', 600: '#1E6B8C', 700: '#155A75',
+          800: '#0F4A61', 900: '#0A2540', 950: '#061A2E',
+        },
+        teal: {
+          DEFAULT: '#1E6B8C',
+          50: '#f0f7fa',
+          100: '#d4eaf2',
+          200: '#a8d5e6',
+          300: '#6bb8d4',
+          400: '#2A7FA3',
+          500: '#1E6B8C',
+          600: '#1E6B8C',
+          700: '#155A75',
+          800: '#0F4A61',
+          900: '#0A2540',
+        },
+        // Legacy brand aliases for backward compatibility
         brand: {
-          orange: '#f5a623',
-          deepTeal: '#1e6b8c',
-          mediumTeal: '#3a7a8c',
-          lightTeal: '#5a9aac',
-          paleTeal: '#a8d8e8',
+          orange: '#F5A623',
+          deepTeal: '#1E6B8C',
+          mediumTeal: '#2A7FA3',
+          lightTeal: '#5A9AAC',
+          paleTeal: '#a8d5e6',
         },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['Fira Code', 'monospace'],
+        heading: ['Poppins', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
     },
   },
