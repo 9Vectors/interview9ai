@@ -3,7 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-const { initCosmos } = require('./db/cosmosClient');
+const { initCosmos, getDatabase, isCosmosAvailable } = require('./db/cosmosClient');
+const { loadNvidiaSeedData } = require('./seeds/nvidia-data');
 const candidateRoutes = require('./routes/candidates');
 const interviewRoutes = require('./routes/interviews');
 const aiRoutes = require('./routes/ai');
@@ -83,6 +84,18 @@ app.use(errorHandler);
 async function start() {
   try {
     await initCosmos();
+
+    // Load seed data if database is available and empty
+    if (isCosmosAvailable()) {
+      try {
+        const seedResult = await loadNvidiaSeedData(getDatabase(), isCosmosAvailable());
+        if (seedResult.loaded) {
+          console.log('[Interview9] Seed data loaded:', seedResult);
+        }
+      } catch (seedErr) {
+        console.warn('[Interview9] Seed data loading skipped:', seedErr.message);
+      }
+    }
   } catch (err) {
     console.warn('[Interview9] Cosmos init warning (continuing with in-memory):', err.message);
   }
