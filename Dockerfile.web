@@ -17,6 +17,5 @@ FROM nginx:1.27-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.template.conf /etc/nginx/templates/default.conf.template
 ENV API_INTERNAL_URL=localhost:3001
-ENV NGINX_ENVSUBST_FILTER=API_INTERNAL_URL
 RUN echo "ok" > /usr/share/nginx/html/health.txt
 EXPOSE 80
