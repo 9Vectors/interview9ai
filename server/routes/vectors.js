@@ -8,11 +8,11 @@
  * Computes real(ish) scores from interview data using the
  * question->vector mappings defined in the client questions.js.
  *
- * Interview9ai maps to People-heavy vectors:
+ * Interview9ai activates the PEOPLE vector only (Osvaldo v2-spec mandate):
  *   - People (leadership assessment, talent evaluation)
- *   - Strategy (hiring strategy alignment)
- *   - Execution (interview process effectiveness)
- *   - Expectations (role requirements, competency frameworks)
+ *
+ * STAR scoring methodology is internal — it does not count as
+ * Execution-vector activation per the "ONLY IF IT'S NECESSARY" guidance.
  */
 
 const express = require('express');
@@ -32,7 +32,7 @@ const CATEGORY_TO_VECTORS = {
   FEEDBACK_QUALITY: ['Execution', 'People'],
 };
 
-const ACTIVE_VECTORS = ['People', 'Strategy', 'Execution', 'Expectations'];
+const ACTIVE_VECTORS = ['People'];
 
 const VECTOR_DOMAINS = {
   Market: 'assets',
